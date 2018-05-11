@@ -1,0 +1,17 @@
+{% extends 'layout.html' %} {% block body %}
+<h1>Register</h1>
+
+<form class="form-group" method="POST">
+
+    {% for field in form %}
+    <div class="form-group">
+        <label>{{ field.label }}</label>
+        {{ field(class_="form-control") }} 
+        {% for error in field.errors %}
+        <span class="help-inline">{{ error }}</span>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Send</button>
+</form>
+{% endblock %}
