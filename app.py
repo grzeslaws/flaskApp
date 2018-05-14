@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, jsonify, request, url_for, flash, session, logging
-from flask_mysqldb import MySQL
-from wtforms import Form, StringField, TextAreaField, PasswordField, validators
-from passlib.hash import sha256_crypt
+from flask_mysqldb import MySQL 
+from wtforms import Form, StringField, TextAreaField, PasswordField, validators 
+from passlib.hash import sha256_crypt 
 from functools import wraps
 
 from data.articles import Articles
@@ -19,7 +19,7 @@ articlesData = Articles()
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html") 
 
 @app.route("/about")
 def about():
@@ -27,11 +27,23 @@ def about():
 
 @app.route("/articles")
 def articles():
-    return render_template("articles.html", articles = articlesData.getArticles())
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM articles")
+    articles = cur.fetchall()
+    cur.close()
+
+    return render_template("articles.html", articles = articles) 
 
 @app.route("/article/<string:id>")
 def article(id):
-    return render_template("article.html", articleId = id)
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM articles WHERE id = %s", [id])
+    article = cur.fetchone()
+    cur.close()
+
+    return render_template("article.html", article = article)
 
 class RegisterForm(Form):
     name = StringField('Name', [validators.Length(min=1, max=50)])
@@ -63,7 +75,7 @@ def register():
 
         flash("You heve been registered", "success")
 
-        redirect(url_for("home"))
+        return redirect(url_for("login"))
 
     return render_template("register.html", form=form)
 
@@ -81,8 +93,6 @@ def login():
         username = request.form["username"]
         formPassword = request.form["password"]
 
-        print("formPassword", formPassword)
-
         cur = mysql.connection.cursor()
         result = cur.execute("SELECT password FROM users WHERE username=%s", [username])
         
@@ -93,18 +103,17 @@ def login():
 
                 session["loggedIn"] = True
                 session["username"] = username
-
                 flash("You've been logged", "success")
 
                 return redirect(url_for("dashboard"))
 
             else:
                 flash("Incorect password", "danger")
-            
-            cur.close()
+                cur.close()
 
         else:
             flash("No user", "danger")
+            cur.close()
     
     return render_template("login.html", form=form)
 
@@ -123,77 +132,89 @@ def logout():
     session.clear()
     return redirect(url_for("about"))
 
+class ArticleForm(Form):
+    title = StringField('Title', [validators.Length(min=1)])
+    body = TextAreaField('Body', [validators.Length(min=10)])
+
+@app.route("/addArticle", methods=["GET", "POST"])
+def addArticle():
+    form = ArticleForm(request.form)
+    
+    if request.method == "POST" and form.validate():
+
+        title = request.form['title']
+        body = request.form['body']
+
+        cur = mysql.connection.cursor()
+        cur.execute("INSERT INTO articles(title, body, author) VALUES (%s, %s, %s)", (title, body, session["username"]))
+
+        mysql.connection.commit()
+
+        cur.close()
+
+        flash("Article was added", "success")
+
+        return redirect(url_for("dashboard"))
+
+    return render_template("addArticle.html", form=form)
+
+@app.route("/editArticle/<string:id>", methods=["GET", "POST"])
+def editArticle(id):
+
+    form = ArticleForm(request.form)
+
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM articles WHERE id = %s", [id])
+    article = cur.fetchone()
+    cur.close()
+
+    form.title.data = article["title"]
+    form.body.data = article["body"]
+    
+    if request.method == "POST":
+
+        title = request.form['title']
+        body = request.form['body']
+
+        form.title.data = title
+        form.body.data = body
+
+        if form.validate():
+
+            cur = mysql.connection.cursor()
+            cur.execute("UPDATE articles SET title = %s, body = %s WHERE id = %s", (title, body, id))
+            mysql.connection.commit()
+            cur.close()
+            flash("Article was edited", "success")
+
+            return redirect(url_for("dashboard"))
+
+    return render_template("editArticle.html", form=form)
+
+@app.route("/deleteArticle")
+def deleteArticle():
+
+    id = int(request.args.get("id"))
+    
+    cur = mysql.connection.cursor()
+    cur.execute("DELETE FROM articles WHERE id = %s", [id])
+    mysql.connection.commit()
+    cur.close()
+    flash("Article was deleted", "success")
+
+    return redirect(url_for("dashboard"))
+
 @app.route("/dashboard")
 @isLoggedIn
 def dashboard():
 
-    print(session["username"])
-
     cur = mysql.connection.cursor()
-    cur.execute("SELECT * FROM users WHERE username=%s", session["username"])
-    userData = cur.fetchall()
-
-    print(userData[0]["name"])
-
-    return render_template("dashboard.html", userData = userData[0])
-
+    cur.execute("SELECT * FROM articles")
+    articles = cur.fetchall()
     cur.close()
+
+    return render_template("dashboard.html", articles=articles)
 
 if __name__ == '__main__':
     app.secret_key = 'super secret key'
     app.run(debug=True)
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# if __name__ == '__main__':
-#    app.run(debug = True)
-
-# @app.route("/news")
-# def news():
-#     return jsonify(username="Tom", color="red")
-
-# @app.route("/news/<int:news_id>")
-# def newsId(news_id):
-#     return 'News id is %d' % news_id
-
-# @app.route("/add", methods=["POST", "GET"])
-# def add():
-#     error = ""
-#     # error = None
-#     senededValue = {
-#         "val": request.form,
-#         "name": "Tom",
-#         "error": error
-#     }
-#     if request.method == "POST":
-#         print(request.form["someName"])
-#     else:
-#         senededValue.error = 'Invalid value'
-#     return render_template('hello.html', senededValue=request.form["someName"])

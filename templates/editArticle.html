@@ -1,0 +1,24 @@
+{% extends 'layout.html' %} {% block body %}
+<h1>Edit article</h1>
+
+<form class="form-group" method="POST">
+
+
+    <div class="form-group">
+        <label>Title</label>
+        <div class="form-group">
+            {{ form.title(class_="form-control") }}
+        </div>
+        <label>Body</label>
+        <div class="form-group">
+            {{ form.body(class_="form-control", id="editor") }} 
+            {% for error in form.body.errors %}
+                <span class="help-inline">{{ error }}</span>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <button type="submit" class="btn btn-primary">Send</button>
+</form>
+{% endblock %}

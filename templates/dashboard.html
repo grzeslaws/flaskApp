@@ -1,10 +1,38 @@
-{% extends "layout.html" %}
+{% extends "layout.html" %} {% block body %}
 
-{% block body %}
-    
-        <h1>Dashboard</h1>
-        <p class="lead">Welcome {{ userData.name }}</p>
-    
+<h1>Dashboard
+        <small> Welcome {{session.username}}</small>
+</h1>
+<a class="btn btn-success" href="/addArticle">Add Article</a>
+<hr>
+<table class="table table-striped">
+        <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Date</th>
+                <th></th>
+                <th></th>
+        </tr>
+        {% for article in articles %}
+
+        <tr>
+                <td>{{article.id}}</td>
+                <td>
+                        <a href="/article/{{ article.id }}">{{article.title}}</a>
+                </td>
+                <td>{{article.author}}</td>
+                <td>{{article.createAt}}</td>
+                <td>
+                        <a href="editArticle/{{ article.id }}" class="btn btn-default pull-right">Edit</a>
+                </td>
+
+                <td>
+                        <a href="/deleteArticle?id={{ article.id }}" class="btn btn-danger">Delete</a>
+                </td>
+        </tr>
+
+        {% endfor %}
+</table>
+
 {% endblock %}
-
-
