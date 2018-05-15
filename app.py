@@ -3,6 +3,13 @@ from flask_mysqldb import MySQL
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators 
 from passlib.hash import sha256_crypt 
 from functools import wraps
+from flask_dance.contrib.twitter import make_twitter_blueprint, twitter
+import os
+import os.path
+import json
+from flask_dance.consumer.backend import BaseBackend
+
+from config.keys import Keys
 
 from data.articles import Articles
 app = Flask(__name__)
@@ -15,6 +22,46 @@ app.config["MYSQL_CURSORCLASS"] = "DictCursor"
 
 mysql = MySQL(app)
 
+blueprint = make_twitter_blueprint(api_key = Keys.getTwitterKeys()["apiKey"], api_secret = Keys.getTwitterKeys()["apiSecret"])
+app.register_blueprint(blueprint, url_prefix="/twitter_login")
+
+# class FileBackend(BaseBackend):
+#     def __init__(self, filepath):
+#         super(FileBackend, self).__init__()
+#         self.filepath = filepath
+
+#     def get(self, blueprint):
+#         if not os.path.exists(self.filepath):
+#             return None
+#         with open(self.filepath) as f:
+#             return json.load(f)
+
+#     def set(self, blueprint, token):
+#         with open(self.filepath, "w") as f:
+#             json.dump(token, f)
+
+#     def delete(self, blueprint):
+#         os.remove(self.filepath)
+
+@app.route("/twitter")
+def twitterLogin():
+    if not twitter.authorized:
+        return redirect(url_for("twitter.login"))
+
+    resp = twitter.get("account/settings.json")
+    print(resp)
+    print(twitter.authorized)
+
+    if resp.ok:
+        session["username"] = resp.json()["screen_name"]
+        session["loggedIn"] = True
+
+        print(session["username"])
+        print(session["loggedIn"])
+
+        # return "You have been authorized by twitter as @{screen_name}".format(resp.json()["screen_name"])
+        return redirect(url_for("dashboard"))
+    
 articlesData = Articles()
 
 @app.route("/")
